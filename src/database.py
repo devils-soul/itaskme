@@ -6,6 +6,7 @@ from typing import Optional, List, Dict, Any
 class Database:
     def __init__(self, db_path: str):
         self.db_path = db_path
+        print(f"🔧 Инициализация Database с путем: {db_path}")
     
     def _get_connection(self):
         """Получение соединения с БД"""
@@ -41,6 +42,7 @@ class Database:
         conn.commit()
         conn.close()
         
+        print(f"✅ Создан менеджер ID: {manager_id}, Telegram ID: {telegram_id}")
         return manager_id
     
     def update_manager_step(self, telegram_id: int, step: int):
@@ -75,6 +77,7 @@ class Database:
         
         conn.commit()
         conn.close()
+        print(f"✅ Регистрация завершена для Telegram ID: {telegram_id}")
     
     # ========== Сообщения бота ==========
     
@@ -132,6 +135,7 @@ class Database:
         conn.commit()
         conn.close()
         
+        print(f"✅ Создан клиент ID: {client_id}, менеджер ID: {manager_id}, имя: {name}")
         return client_id
     
     def get_clients(self, manager_id: int, limit: int = 100) -> List[Dict]:
@@ -188,3 +192,4 @@ class Database:
         
         conn.commit()
         conn.close()
+        print(f"✅ Созданы шаблоны по умолчанию для менеджера ID: {manager_id}")

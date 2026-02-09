@@ -13,15 +13,12 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Добавляем пути для импорта
-current_dir = os.path.dirname(os.path.abspath(__file__))
-project_root = os.path.dirname(current_dir)
-sys.path.insert(0, project_root)
+# Добавляем путь к корню проекта
+sys.path.insert(0, '/app')
 
-logger.info(f"📁 Текущая директория: {current_dir}")
-logger.info(f"📁 Корень проекта: {project_root}")
-logger.info(f"📁 Содержимое /app: {os.listdir(project_root) if os.path.exists(project_root) else 'Папка не существует'}")
-logger.info(f"📁 Содержимое /app/database: {os.listdir('/app/database') if os.path.exists('/app/database') else 'Папка database не существует'}")
+logger.info("=" * 50)
+logger.info("🚀 ЗАПУСК БОТА SALES ASSISTANT")
+logger.info("=" * 50)
 
 try:
     from aiogram import Bot, Dispatcher
@@ -45,37 +42,37 @@ except ImportError as e:
     logger.error(f"❌ Ошибка импорта handlers: {e}")
     sys.exit(1)
 
+# ПРЯМОЙ ИМПОРТ БЕЗ src. префикса
 try:
-    # Пытаемся импортировать напрямую из database
-    import database.init_db as init_db_module
-    init_database = init_db_module.init_database
-    logger.info("✅ database импортирован успешно (через прямой импорт)")
+    from database.init_db import init_database
+    logger.info("✅ database.init_db импортирован успешно")
 except ImportError as e:
-    logger.error(f"❌ Ошибка импорта database: {e}")
-    # Пробуем альтернативный способ импорта
+    logger.error(f"❌ Ошибка импорта database.init_db: {e}")
+    logger.error("Пробую альтернативный импорт...")
     try:
-        import sys
-        sys.path.append('/app')
-        from database.init_db import init_database
-        logger.info("✅ database импортирован успешно (через sys.path)")
-    except ImportError as e2:
+        # Альтернативный способ
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("init_db", "/app/database/init_db.py")
+        init_db_module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(init_db_module)
+        init_database = init_db_module.init_database
+        logger.info("✅ database импортирован через importlib")
+    except Exception as e2:
         logger.error(f"❌ Альтернативный импорт также не удался: {e2}")
         sys.exit(1)
 
 async def main():
     """Основная функция бота"""
-    logger.info("🚀 Запуск бота Sales Assistant...")
+    logger.info("🔧 Начинаем инициализацию бота...")
     
     # Проверяем конфигурацию
     try:
         Config.validate()
-        logger.info(f"✅ Конфигурация загружена. BOT_TOKEN: {'есть' if Config.BOT_TOKEN else 'НЕТ'}")
+        logger.info(f"✅ Конфигурация загружена")
+        logger.info(f"   • DB_PATH: {Config.DB_PATH}")
     except ValueError as e:
         logger.error(f"❌ Ошибка конфигурации: {e}")
-        logger.error("💡 Проверьте переменные окружения на bothost.ru:")
-        logger.error("   1. BOT_TOKEN - токен от @BotFather")
-        logger.error("   2. ADMIN_ID - ваш Telegram ID")
-        logger.error("   3. DB_PATH - /app/data/sales_assistant.db")
+        logger.error("💡 Проверьте переменные окружения на bothost.ru")
         return
     
     # Инициализируем базу данных
@@ -100,8 +97,10 @@ async def main():
         dp.include_router(router)
         
         # Запускаем бота
-        logger.info("🎉 Бот запущен! Ожидаем сообщения...")
-        logger.info("📱 Перейдите в Telegram и отправьте /start вашему боту")
+        logger.info("=" * 50)
+        logger.info("🎉 БОТ УСПЕШНО ЗАПУЩЕН!")
+        logger.info("📱 Отправьте /start в Telegram вашему боту")
+        logger.info("=" * 50)
         
         await dp.start_polling(bot)
         

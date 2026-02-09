@@ -1,5 +1,4 @@
 aiogram==3.0.0
 python-dotenv==1.0.0
-sqlite3
 phonenumbers==8.13.20
 pytz==2023.3

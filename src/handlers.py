@@ -395,9 +395,109 @@ class MenuHandlers:
         )
         
         await callback.answer()
-
+class MainMenuHandlers:
+    """Обработчики главного меню"""
+    
+    @staticmethod
+    @router.callback_query(F.data == "menu_clients")
+    async def menu_clients(callback: CallbackQuery, state: FSMContext):
+        """Меню 'Мои клиенты'"""
+        handler = BotHandler(callback.bot)
+        
+        # Получаем данные менеджера
+        manager = db.get_manager(callback.from_user.id)
+        if not manager:
+            await callback.answer("❌ Ошибка: пользователь не найден")
+            return
+        
+        # Получаем список клиентов
+        clients = db.get_clients(manager['id'], limit=10)
+        
+        if not clients:
+            message_text = "👥 *Мои клиенты*\n\nУ вас пока нет клиентов.\n\n📱 Отправьте номер телефона клиента, чтобы добавить его."
+        else:
+            clients_list = []
+            for i, client in enumerate(clients[:10], 1):
+                clients_list.append(f"{i}. {client['name']} - {PhoneUtils.format_phone_display(client['phone'])}")
+            
+            message_text = f"👥 *Мои клиенты* (последние 10)\n\n" + "\n".join(clients_list) + "\n\n📱 Отправьте номер телефона клиента, чтобы добавить или найти."
+        
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            message_text,
+            Keyboards.get_back_button("main_menu")
+        )
+        await callback.answer()
+    
+    @staticmethod
+    @router.callback_query(F.data == "menu_templates")
+    async def menu_templates(callback: CallbackQuery, state: FSMContext):
+        """Меню 'Шаблоны сообщений'"""
+        handler = BotHandler(callback.bot)
+        
+        # Получаем данные менеджера
+        manager = db.get_manager(callback.from_user.id)
+        if not manager:
+            await callback.answer("❌ Ошибка: пользователь не найден")
+            return
+        
+        # Получаем шаблоны
+        templates = db.get_templates(manager['id'])
+        
+        if not templates:
+            message_text = "📋 *Шаблоны сообщений*\n\nУ вас пока нет шаблонов."
+        else:
+            templates_list = []
+            for i, template in enumerate(templates, 1):
+                templates_list.append(f"{i}. {template['name']}")
+            
+            message_text = f"📋 *Шаблоны сообщений*\n\n" + "\n".join(templates_list) + "\n\n⚡ Эта функция находится в разработке."
+        
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            message_text,
+            Keyboards.get_back_button("main_menu")
+        )
+        await callback.answer()
+    
+    @staticmethod
+    @router.callback_query(F.data == "menu_reminders")
+    async def menu_reminders(callback: CallbackQuery, state: FSMContext):
+        """Меню 'Мои напоминания'"""
+        handler = BotHandler(callback.bot)
+        
+        message_text = "🔔 *Мои напоминания*\n\n⚡ Эта функция находится в разработке.\n\nСкоро вы сможете создавать напоминания для звонков и встреч с клиентами."
+        
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            message_text,
+            Keyboards.get_back_button("main_menu")
+        )
+        await callback.answer()
+    
+    @staticmethod
+    @router.callback_query(F.data == "menu_settings")
+    async def menu_settings(callback: CallbackQuery, state: FSMContext):
+        """Меню 'Настройки профиля'"""
+        handler = BotHandler(callback.bot)
+        
+        # Получаем данные менеджера
+        manager = db.get_manager(callback.from_user.id)
+        if not manager:
+            await callback.answer("❌ Ошибка: пользователь не найден")
+            return
+        
+        message_text = f"⚙️ *Настройки профиля*\n\n👤 Имя: {manager['full_name']}\n🏢 Сфера: {manager['industry_custom'] or manager['industry']}\n📱 Телефон: {PhoneUtils.format_phone_display(manager['phone'])}\n\n⚡ Редактирование профиля в разработке."
+        
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            message_text,
+            Keyboards.get_back_button("main_menu")
+        )
+        await callback.answer()
 
 # Регистрируем обработчики
 registration_handlers = RegistrationHandlers()
 client_handlers = ClientHandlers()
 menu_handlers = MenuHandlers()
+main_menu_handlers = MainMenuHandlers()  # ← ДОБАВЬТЕ ЭТУ СТРОКУ

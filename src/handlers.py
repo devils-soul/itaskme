@@ -3,24 +3,20 @@ from aiogram.types import Message, CallbackQuery, Contact
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-# АБСОЛЮТНЫЕ импорты вместо относительных
-# Пробуем разные способы импорта Database
-try:
-    from src.database import Database
-except ImportError:
-    try:
-        # Альтернативный способ импорта
-        import sys
-        sys.path.append('/app')
-        from database import Database
-    except ImportError as e:
-        print(f"❌ Критическая ошибка: Не удалось импортировать Database: {e}")
-        raise
+# ИМПОРТЫ БЕЗ src. префикса - теперь всё в одной папке /app
 from src.keyboards import Keyboards
 from src.messages import Messages
 from src.utils import PhoneUtils, MessageUtils, TextUtils
 from src.states import RegistrationStates, ClientStates
 from src.config import Config
+
+# Database импортируем напрямую из database
+try:
+    from database import Database
+    logger.info("✅ Database импортирован успешно")
+except ImportError as e:
+    print(f"❌ Ошибка импорта Database: {e}")
+    raise
 
 import logging
 

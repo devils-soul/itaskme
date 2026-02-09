@@ -9,31 +9,26 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Импорты из текущей директории src
+# Импорты из текущей директории src (БЕЗ префикса src.)
 try:
-    from src.database import Database
+    from database import Database
     logger.info("✅ Database импортирован успешно")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта Database: {e}")
-    # Пробуем альтернативный импорт
-    try:
-        import sys
-        sys.path.append('/app/src')
-        from database import Database
-        logger.info("✅ Database импортирован через альтернативный путь")
-    except ImportError as e2:
-        logger.error(f"❌ Альтернативный импорт также не удался: {e2}")
-        raise
+    raise
 
 try:
-    from src.keyboards import Keyboards
-    from src.messages import Messages
-    from src.utils import PhoneUtils, MessageUtils, TextUtils
-    from src.states import RegistrationStates, ClientStates
-    from src.config import Config
+    from keyboards import Keyboards
+    from messages import Messages
+    from utils import PhoneUtils, MessageUtils, TextUtils
+    from states import RegistrationStates, ClientStates
+    from config import Config
     logger.info("✅ Все модули импортированы успешно")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта модулей: {e}")
+    # Покажем, что доступно в директории
+    import os
+    logger.error(f"📁 Содержимое /app/src: {os.listdir('/app/src')}")
     raise
 
 router = Router()

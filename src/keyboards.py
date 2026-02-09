@@ -1,19 +1,29 @@
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils.keyboard import InlineKeyboardBuilder
+from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
 
 class Keyboards:
     """Клавиатуры для бота"""
     
     @staticmethod
     def remove_keyboard():
-        """Удалить клавиатуру"""
-        return ReplyKeyboardMarkup(remove_keyboard=True)
+        """Удалить клавиатуру - ПРАВИЛЬНО для aiogram 3.0"""
+        return ReplyKeyboardMarkup(
+            keyboard=[],  # Пустой список кнопок
+            resize_keyboard=True,
+            one_time_keyboard=True,
+            remove_keyboard=True  # Это устаревший параметр, но оставим
+        )
     
     @staticmethod
     def get_phone_keyboard():
         """Клавиатура для получения номера телефона"""
-        return ReplyKeyboardMarkup(
-            keyboard=[[KeyboardButton(text="📱 Поделиться номером телефона", request_contact=True)]],
+        builder = ReplyKeyboardBuilder()
+        
+        builder.add(
+            KeyboardButton(text="📱 Поделиться номером телефона", request_contact=True)
+        )
+        
+        return builder.as_markup(
             resize_keyboard=True,
             one_time_keyboard=True
         )

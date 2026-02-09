@@ -20,6 +20,8 @@ sys.path.insert(0, project_root)
 
 logger.info(f"📁 Текущая директория: {current_dir}")
 logger.info(f"📁 Корень проекта: {project_root}")
+logger.info(f"📁 Содержимое /app: {os.listdir(project_root) if os.path.exists(project_root) else 'Папка не существует'}")
+logger.info(f"📁 Содержимое /app/database: {os.listdir('/app/database') if os.path.exists('/app/database') else 'Папка database не существует'}")
 
 try:
     from aiogram import Bot, Dispatcher
@@ -44,11 +46,21 @@ except ImportError as e:
     sys.exit(1)
 
 try:
-    from src.database.init_db import init_database
-    logger.info("✅ database импортирован успешно")
+    # Пытаемся импортировать напрямую из database
+    import database.init_db as init_db_module
+    init_database = init_db_module.init_database
+    logger.info("✅ database импортирован успешно (через прямой импорт)")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта database: {e}")
-    sys.exit(1)
+    # Пробуем альтернативный способ импорта
+    try:
+        import sys
+        sys.path.append('/app')
+        from database.init_db import init_database
+        logger.info("✅ database импортирован успешно (через sys.path)")
+    except ImportError as e2:
+        logger.error(f"❌ Альтернативный импорт также не удался: {e2}")
+        sys.exit(1)
 
 async def main():
     """Основная функция бота"""
@@ -72,7 +84,7 @@ async def main():
         init_database(Config.DB_PATH)
         logger.info("✅ База данных инициализирована")
     except Exception as e:
-        logger.error(f"❌ Ошибка инициализации БД: {e}")
+        logger.error(f"❌ Ошибка инициализации БД: {e}", exc_info=True)
         return
     
     # Создаем бота и диспетчер

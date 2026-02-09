@@ -4,7 +4,18 @@ from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
 # АБСОЛЮТНЫЕ импорты вместо относительных
-from src.database import Database
+# Пробуем разные способы импорта Database
+try:
+    from src.database import Database
+except ImportError:
+    try:
+        # Альтернативный способ импорта
+        import sys
+        sys.path.append('/app')
+        from database import Database
+    except ImportError as e:
+        print(f"❌ Критическая ошибка: Не удалось импортировать Database: {e}")
+        raise
 from src.keyboards import Keyboards
 from src.messages import Messages
 from src.utils import PhoneUtils, MessageUtils, TextUtils

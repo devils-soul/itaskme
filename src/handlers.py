@@ -3,26 +3,38 @@ from aiogram.types import Message, CallbackQuery, Contact
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-# ИМПОРТЫ БЕЗ src. префикса - теперь всё в одной папке /app
-from src.keyboards import Keyboards
-from src.messages import Messages
-from src.utils import PhoneUtils, MessageUtils, TextUtils
-from src.states import RegistrationStates, ClientStates
-from src.config import Config
-
-# Database импортируем напрямую из database
-try:
-    from database import Database
-    logger.info("✅ Database импортирован успешно")
-except ImportError as e:
-    print(f"❌ Ошибка импорта Database: {e}")
-    raise
-
 import logging
 
-# Настройка логирования
+# Настройка логирования ПЕРЕД импортами
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Импорты из текущей директории src
+try:
+    from src.database import Database
+    logger.info("✅ Database импортирован успешно")
+except ImportError as e:
+    logger.error(f"❌ Ошибка импорта Database: {e}")
+    # Пробуем альтернативный импорт
+    try:
+        import sys
+        sys.path.append('/app/src')
+        from database import Database
+        logger.info("✅ Database импортирован через альтернативный путь")
+    except ImportError as e2:
+        logger.error(f"❌ Альтернативный импорт также не удался: {e2}")
+        raise
+
+try:
+    from src.keyboards import Keyboards
+    from src.messages import Messages
+    from src.utils import PhoneUtils, MessageUtils, TextUtils
+    from src.states import RegistrationStates, ClientStates
+    from src.config import Config
+    logger.info("✅ Все модули импортированы успешно")
+except ImportError as e:
+    logger.error(f"❌ Ошибка импорта модулей: {e}")
+    raise
 
 router = Router()
 db = Database(Config.DB_PATH)

@@ -3,12 +3,13 @@ from aiogram.types import Message, CallbackQuery, Contact
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 
-from .database import Database
-from .keyboards import Keyboards
-from .messages import Messages
-from .utils import PhoneUtils, MessageUtils, TextUtils
-from .states import RegistrationStates, ClientStates
-from .config import Config
+# АБСОЛЮТНЫЕ импорты вместо относительных
+from src.database import Database
+from src.keyboards import Keyboards
+from src.messages import Messages
+from src.utils import PhoneUtils, MessageUtils, TextUtils
+from src.states import RegistrationStates, ClientStates
+from src.config import Config
 
 import logging
 

@@ -26,9 +26,6 @@ try:
     logger.info("✅ Все модули импортированы успешно")
 except ImportError as e:
     logger.error(f"❌ Ошибка импорта модулей: {e}")
-    # Покажем, что доступно в директории
-    import os
-    logger.error(f"📁 Содержимое /app/src: {os.listdir('/app/src')}")
     raise
 
 router = Router()
@@ -184,9 +181,9 @@ class RegistrationHandlers:
         await state.set_state(RegistrationStates.waiting_for_phone)
     
     @staticmethod
-    @router.message(RegistrationStates.waiting_for_phone)
-    async def process_phone_invalid(message: Message, state: FSMContext):
-        """Обработка невалидного ввода телефона (не контакт)"""
+    @router.message(RegistrationStates.waiting_for_phone, F.text)
+    async def process_phone_invalid_text(message: Message, state: FSMContext):
+        """Обработка текстового ввода вместо контакта"""
         handler = BotHandler(message.bot)
         
         await handler._send_and_save_message(
@@ -202,16 +199,21 @@ class RegistrationHandlers:
         handler = BotHandler(message.bot)
         contact = message.contact
         
+        logger.info(f"📱 Получен контакт: {contact.phone_number}")
+        
         # Стандартизируем номер телефона
         phone = PhoneUtils.standardize_phone(contact.phone_number)
         if not phone:
             await message.answer("⚠️ Не удалось обработать номер телефона. Попробуйте ещё раз.")
             return
         
+        logger.info(f"✅ Номер стандартизирован: {phone}")
+        
         await state.update_data(phone=phone)
         
         # Получаем данные из состояния
         data = await state.get_data()
+        logger.info(f"📋 Данные состояния: {data}")
         
         # Создаем менеджера в базе данных
         manager_id = db.create_manager(
@@ -221,6 +223,8 @@ class RegistrationHandlers:
             phone=phone,
             industry_custom=data.get('industry_custom')
         )
+        
+        logger.info(f"✅ Менеджер создан с ID: {manager_id}")
         
         # Создаем шаблоны по умолчанию
         db.create_default_templates(manager_id, data['full_name'], data['industry_display'])

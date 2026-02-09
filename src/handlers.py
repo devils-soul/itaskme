@@ -195,4 +195,190 @@ class RegistrationHandlers:
         
         await state.update_data(phone=phone)
         
-        # Получаем
+        # Получаем данные из состояния
+        data = await state.get_data()
+        
+        # Создаем менеджера в базе данных
+        manager_id = db.create_manager(
+            telegram_id=message.from_user.id,
+            full_name=data['full_name'],
+            industry=data['industry'],
+            phone=phone,
+            industry_custom=data.get('industry_custom')
+        )
+        
+        # Создаем шаблоны по умолчанию
+        db.create_default_templates(manager_id, data['full_name'], data['industry_display'])
+        
+        # Переходим к правилам
+        await handler._send_and_save_message(
+            message.chat.id,
+            Messages.STEP_4_TERMS,
+            Keyboards.get_terms_keyboard()
+        )
+        await state.set_state(RegistrationStates.waiting_for_terms)
+    
+    @staticmethod
+    @router.callback_query(F.data == "terms_accept")
+    async def process_terms_accept(callback: CallbackQuery, state: FSMContext):
+        """Обработка принятия правил"""
+        handler = BotHandler(callback.bot)
+        
+        # Завершаем регистрацию
+        db.complete_registration(callback.from_user.id)
+        
+        # Получаем данные менеджера
+        manager = db.get_manager(callback.from_user.id)
+        
+        # Показываем главное меню
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            Messages.MAIN_MENU.format(name=manager['full_name']),
+            Keyboards.get_main_menu()
+        )
+        
+        await state.clear()
+        await callback.answer("✅ Регистрация завершена!")
+    
+    @staticmethod
+    @router.callback_query(F.data == "terms_reject")
+    async def process_terms_reject(callback: CallbackQuery, state: FSMContext):
+        """Обработка отказа от правил"""
+        handler = BotHandler(callback.bot)
+        
+        # Обновляем статус менеджера
+        db.update_manager_step(callback.from_user.id, 0)
+        
+        # Показываем сообщение об отмене
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            Messages.REGISTRATION_CANCELLED,
+            Keyboards.remove_keyboard()
+        )
+        
+        await state.clear()
+        await callback.answer("❌ Регистрация отменена")
+
+
+class ClientHandlers:
+    """Обработчики работы с клиентами"""
+    
+    @staticmethod
+    @router.message(F.text)
+    async def process_phone_input(message: Message, state: FSMContext):
+        """Обработка ввода номера телефона клиента"""
+        handler = BotHandler(message.bot)
+        
+        # Проверяем, зарегистрирован ли пользователь
+        manager = db.get_manager(message.from_user.id)
+        if not manager or not manager['terms_accepted']:
+            await message.answer("ℹ️ Пожалуйста, сначала завершите регистрацию. Нажмите /start")
+            return
+        
+        # Проверяем, не в процессе ли мы регистрации
+        current_state = await state.get_state()
+        if current_state:
+            # Если есть активное состояние, игнорируем ввод телефона
+            return
+        
+        # Стандартизируем номер телефона
+        phone = PhoneUtils.standardize_phone(message.text)
+        if not phone:
+            await handler._send_and_save_message(
+                message.chat.id,
+                Messages.INVALID_PHONE,
+                Keyboards.get_back_button("main_menu")
+            )
+            return
+        
+        # Проверяем, есть ли такой клиент
+        client = db.get_client(manager['id'], phone)
+        
+        if client:
+            # Клиент уже существует - показываем карточку
+            await handler._send_and_save_message(
+                message.chat.id,
+                Messages.CLIENT_CARD.format(
+                    name=client['name'],
+                    phone=PhoneUtils.format_phone_display(client['phone']),
+                    last_contact=MessageUtils.format_datetime(client['last_contact']),
+                    status=client['status'],
+                    notes=client['notes'] or "Нет заметок"
+                ),
+                Keyboards.get_client_actions()
+            )
+        else:
+            # Новый клиент - запрашиваем имя
+            await state.update_data(client_phone=phone)
+            await handler._send_and_save_message(
+                message.chat.id,
+                Messages.NEW_CLIENT.format(phone=PhoneUtils.format_phone_display(phone)),
+                Keyboards.get_back_button("main_menu")
+            )
+            await state.set_state(ClientStates.waiting_for_client_name)
+    
+    @staticmethod
+    @router.message(ClientStates.waiting_for_client_name)
+    async def process_client_name(message: Message, state: FSMContext):
+        """Обработка ввода имени клиента"""
+        handler = BotHandler(message.bot)
+        
+        client_name = TextUtils.normalize_name(message.text)
+        if not client_name or len(client_name) < 2:
+            await message.answer("⚠️ Пожалуйста, введите корректное имя клиента (минимум 2 символа)")
+            return
+        
+        # Получаем данные из состояния
+        data = await state.get_data()
+        client_phone = data['client_phone']
+        
+        # Получаем менеджера
+        manager = db.get_manager(message.from_user.id)
+        
+        # Создаем клиента
+        client_id = db.create_client(manager['id'], client_name, client_phone)
+        
+        # Показываем сообщение об успешном создании
+        await handler._send_and_save_message(
+            message.chat.id,
+            Messages.CLIENT_SAVED.format(name=client_name),
+            Keyboards.get_new_client_actions()
+        )
+        
+        # Сохраняем ID клиента для дальнейших действий
+        await state.update_data(client_id=client_id, client_name=client_name)
+        await state.clear()
+
+
+class MenuHandlers:
+    """Обработчики меню"""
+    
+    @staticmethod
+    @router.callback_query(F.data == "main_menu")
+    async def process_main_menu(callback: CallbackQuery, state: FSMContext):
+        """Обработка перехода в главное меню"""
+        handler = BotHandler(callback.bot)
+        
+        # Очищаем состояние
+        await state.clear()
+        
+        # Получаем данные менеджера
+        manager = db.get_manager(callback.from_user.id)
+        if not manager:
+            await callback.answer("❌ Ошибка: пользователь не найден")
+            return
+        
+        # Показываем главное меню
+        await handler._send_and_save_message(
+            callback.message.chat.id,
+            Messages.MAIN_MENU.format(name=manager['full_name']),
+            Keyboards.get_main_menu()
+        )
+        
+        await callback.answer()
+
+
+# Регистрируем обработчики
+registration_handlers = RegistrationHandlers()
+client_handlers = ClientHandlers()
+menu_handlers = MenuHandlers()
